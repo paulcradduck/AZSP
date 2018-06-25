@@ -1,0 +1,106 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string"
+    },
+    "storageSettings": {
+      "type": "object"
+    },
+    "machineSettings": {
+      "type": "object"
+    },
+    "osSettings": {
+      "type": "object"
+    },
+    "adminUsername": {
+      "type": "string"
+    },
+    "adminPassword": {
+      "type": "securestring"
+    },
+    "splunkAdminPassword": {
+      "type": "securestring"
+    },
+    "clusterSecret": {
+      "type": "securestring"
+    },
+    "namespace": {
+      "type": "string"
+    },
+    "subnet": {
+      "type": "string"
+    },
+    "templateBaseUrl": {
+      "type": "string"
+    },
+    "providerGuid": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "templateAPIVersion": "2015-01-01",
+    "resourceAPIVersion": "2015-06-15",
+    "splunkServerRole": "splunk_cluster_master",
+    "securityGroupName": "NSG-SN-10.164.8.0_26",
+    "splunkTemplateUrl": "[concat(parameters('templateBaseUrl'), 'splunk-2disk-resources.json')]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2015-01-01",
+      "type": "Microsoft.Resources/deployments",
+      "name": "clustermaster",
+      "dependsOn": [  ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('splunkTemplateUrl')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "splunkServerRole": {
+            "value": "[variables('splunkServerRole')]"
+          },
+          "securityGroupName": {
+            "value": "[variables('securityGroupName')]"
+          },
+          "namespace": {
+            "value": "[parameters('namespace')]"
+          },
+          "machineSettings": {
+            "value": "[parameters('machineSettings')]"
+          },
+          "storageSettings": {
+            "value": "[parameters('storageSettings')]"
+          },
+          "osSettings": {
+            "value": "[parameters('osSettings')]"
+          },
+          "adminUsername": {
+            "value": "[parameters('adminUsername')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "splunkAdminPassword": {
+            "value": "[parameters('splunkAdminPassword')]"
+          },
+          "clusterSecret": {
+            "value": "[parameters('clusterSecret')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "subnet": {
+            "value": "[parameters('subnet')]"
+          },
+          "providerGuid": {
+            "value": "[parameters('providerGuid')]"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

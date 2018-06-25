@@ -1,0 +1,165 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string"
+    },
+    "storageSettings": {
+      "type": "object"
+    },
+    "machineSettings": {
+      "type": "object"
+    },
+    "osSettings": {
+      "type": "object"
+    },
+    "adminUsername": {
+      "type": "string"
+    },
+    "adminPassword": {
+      "type": "securestring"
+    },
+    "splunkAdminPassword": {
+      "type": "securestring"
+    },
+    "clusterSecret": {
+      "type": "securestring",
+      "defaultValue": "NA"
+    },
+    "namespace": {
+      "type": "string"
+    },
+    "subnet": {
+      "type": "string"
+    },
+    "splunkServerRole": {
+      "type": "string",
+      "defaultValue": "splunk_server"
+    },
+    "securityGroupName": {
+      "type": "string"
+    },
+    "providerGuid": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "templateAPIVersion": "2015-01-01",
+    "resourceAPIVersion": "2015-06-15",
+    "asgName" :"ASG-SPLK_CM_SH_DS_LS",
+    "singleQuote": "'",
+    "vmCount": "[parameters('machineSettings').vmCount]",
+    "vmName": "[concat(parameters('namespace'), '00' )]",
+    "nicName": "[concat(parameters('namespace'), '00' )]",
+    "nicNumber": "nic1",
+    "clusterMasterIp": "[parameters('machineSettings').clusterMasterIp]",
+    "securityGroupRef": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('securityGroupName'))]",
+    "ipOctet01": "[parameters('machineSettings').staticIps.ipOctet01]",
+    "ipOctet2": "[parameters('machineSettings').staticIps.ipOctet2]",
+    "ipOctet3": "[parameters('machineSettings').staticIps.ipOctet3]",
+    "storageReferencePrefix": "[concat('Microsoft.Storage/storageAccounts/', parameters('storageSettings').name)]",
+    "storageApiVersion": "[providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2017-09-01",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(variables('nicName'), copyIndex(1), variables('nicNumber') )]",
+      "tags": {
+        "provider": "[parameters('providerGuid')]"
+      },
+      "location": "[parameters('location')]",
+      "copy": {
+        "name": "nicCopyLoop",
+        "count": "[variables('vmCount')]"
+      },
+      "properties": {
+        "networkSecurityGroup": {
+          "id": "[variables('securityGroupRef')]"
+        },
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[parameters('subnet')]"
+              },
+              "applicationSecurityGroups": [
+                {
+                    "id": "[resourceId('Microsoft.Network/applicationSecurityGroups',variables('asgName'))]"
+                }
+            ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[concat(variables('vmName'), copyindex(1))]",
+      "tags": {
+        "provider": "[parameters('providerGuid')]"
+      },
+      "location": "[parameters('location')]",
+      "plan": {
+        "name": "[parameters('osSettings').imageReference.sku]",
+        "publisher": "[parameters('osSettings').imageReference.publisher]",
+        "product": "[parameters('osSettings').imageReference.offer]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'), copyindex(1), variables('nicNumber') )]"
+      ],
+      "copy": {
+        "name": "vmCopyLoop",
+        "count": "[variables('vmCount')]"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('machineSettings').availabilitySet)]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[parameters('machineSettings').vmSize]"
+        },
+        "osProfile": {
+          "computerName": "[concat(variables('vmName'), copyindex(1))]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": "[parameters('osSettings').imageReference]",
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat(reference(concat(variables('storageReferencePrefix'), parameters('storageSettings').map[copyIndex()]), variables('storageApiVersion')).primaryEndpoints.blob, 'vhds/', variables('vmName'), copyindex(), '-osdisk.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          },
+          "dataDisks": [
+            {
+              "name": "datadisk1",
+              "diskSizeGB": "[parameters('machineSettings').diskSize]",
+              "lun": 0,
+              "vhd": {
+                "uri": "[concat(reference(concat(variables('storageReferencePrefix'), parameters('storageSettings').map[copyindex()]), variables('storageApiVersion')).primaryEndpoints.blob, 'vhds/', variables('vmName'), copyindex(), '-datadisk1.vhd')]"
+              },
+              "caching": "ReadOnly",
+              "createOption": "Empty"
+            }
+          ]
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('nicName'), copyindex(1), variables('nicNumber')) )]"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

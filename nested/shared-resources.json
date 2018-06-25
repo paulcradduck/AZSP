@@ -1,0 +1,194 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Location where resources will be provisioned"
+      }
+    },
+    "availabilitySetSettings": {
+      "type": "object",
+      "metadata": {
+        "description": "Availability Set settings object"
+      }
+    },
+    "storageSettings": {
+      "type": "object",
+      "metadata": {
+        "description": "Storage account(s) name & types for VHDs"
+      }
+    },
+    "providerGuid": {
+      "type": "string"
+    },
+    "splunkRole": {
+      "type": "array"
+    }
+  },
+  "variables": {
+    "templateAPIVersion": "2015-01-01",
+    "resourceAPIVersion": "2015-06-15"
+  },
+  "resources": [
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[concat(parameters('storageSettings').name, copyIndex())]",
+      "tags": {
+        "provider": "[parameters('providerGuid')]"
+      },
+      "copy": {
+        "name": "storagePoolLoop",
+        "count": "[parameters('storageSettings').count]"
+      },
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[parameters('storageSettings').type]"
+      }
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[concat(parameters('availabilitySetSettings').namePre, parameters('splunkRole')[copyIndex()], parameters('availabilitySetSettings').namePost)]",
+      "tags": {
+        "provider": "[parameters('providerGuid')]"
+      },
+      "copy": {
+        "name": "availabilitySetLoop",
+        "count": "[parameters('availabilitySetSettings').count]"
+      },
+      "location": "[parameters('location')]",
+      "properties": {
+        "platformFaultDomainCount": "[parameters('availabilitySetSettings').fdCount]",
+        "platformUpdateDomainCount": "[parameters('availabilitySetSettings').udCount]"
+      }
+    },
+    {
+      "apiVersion": "2017-10-01",
+      "type": "Microsoft.Network/applicationSecurityGroups",
+      "name": "ASG-SPLK_CI",
+      "location": "[parameters('location')]",
+      "properties": {}
+    },
+    {
+      "apiVersion": "2017-10-01",
+      "type": "Microsoft.Network/applicationSecurityGroups",
+      "name": "ASG-SPLK_CM_SH_DS_LS",
+      "location": "[parameters('location')]",
+      "properties": {}
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "NSG-SN-10.164.8.0_26",
+      "tags": {
+        "provider": "[parameters('providerGuid')]"
+      },
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "Allow-SSH",
+            "properties": {
+              "description": "Allows SSH traffic",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "Allow-HTTP",
+            "properties": {
+              "description": "Allows HTTP traffic on port 8000",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "8000",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 105,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "Allow-Receiver-TCP",
+            "properties": {
+              "description": "Allows receiver TCP traffic on port 9997",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "9997",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 110,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "Allow-HTTPS",
+            "properties": {
+              "description": "Allows HTTPS traffic on port 443",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 120,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "Allow-Replication-TCP",
+            "properties": {
+              "description": "Allows replication TCP traffic on port 9887 from VNET only",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "9887",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 130,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "Allow-HTTP-Event-Collector",
+            "properties": {
+              "description": "Allows HTTP(S) Event Collector traffic on port 8088",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "8088",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 140,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "Allow-Mgmt-From-VNET",
+            "properties": {
+              "description": "Allows mgmt on port 8089 from VNET only",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "8089",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 150,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
