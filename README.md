@@ -1,4 +1,7 @@
 
+[![Deploy to Azure](https://azuredeploy.net/deploybutton.png)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fpaulcradduck%2AZSP%2Fmaster%2Fazuredeploy.json)
+
+
 This template deploys Splunk Enterprise 6.6 on Azure as either **standalone** instance or distributed **cluster** (up to 30 indexers). Each instance has eight (8) 1-TB data drives in RAID0 configuration. 
 The template also provisions a storage account, load balancer, a virtual network with subnet,and all network interfaces, network security groups and apllication security groups required.
 
